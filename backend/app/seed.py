@@ -41,6 +41,26 @@ PAIR_SEEDS = [
         "align_keys": ["sku_code"],
         "compare_fields": ["name", "category"],
         "enabled": 1,
+        "reference_fixture": None,
+        "reference_name": None,
+        "reference_policy": "annotate_only",
+        "reference_target_side": "right",
+    },
+    {
+        "code": "retail_price_web_vs_pos",
+        "title": "网店价 ↔ 收银价（价格主数据参照）",
+        "domain": "pricing",
+        "left_name": "网店价夹具",
+        "right_name": "收银价夹具",
+        "left_fixture": "retail_price_web.json",
+        "right_fixture": "retail_price_pos.json",
+        "align_keys": ["sku_code"],
+        "compare_fields": ["price", "currency"],
+        "enabled": 1,
+        "reference_fixture": "retail_price_master.json",
+        "reference_name": "价格主数据夹具",
+        "reference_policy": "annotate_only",
+        "reference_target_side": "right",
     },
 ]
 
@@ -51,7 +71,46 @@ CONTRACT_SEEDS = [
     ("payment_vs_ledger", "right", ["txn_id", "amount", "currency", "booked_at"]),
     ("sku_catalog_a_vs_b", "left", ["sku_code", "name", "category", "updated_at"]),
     ("sku_catalog_a_vs_b", "right", ["sku_code", "name", "category", "updated_at"]),
+    ("retail_price_web_vs_pos", "left", ["sku_code", "price", "currency", "updated_at"]),
+    ("retail_price_web_vs_pos", "right", ["sku_code", "price", "currency", "updated_at"]),
+    ("retail_price_web_vs_pos", "reference", ["sku_code", "price", "currency", "effective_at"]),
 ]
+
+
+# Columns added by later cuts. Applied idempotently so existing data volumes
+# (docker compose) migrate in place instead of requiring a reset.
+COLUMN_MIGRATIONS = {
+    "reconcile_pairs": [
+        ("reference_fixture", "TEXT"),
+        ("reference_name", "TEXT"),
+        ("reference_policy", "TEXT NOT NULL DEFAULT 'annotate_only'"),
+        ("reference_target_side", "TEXT NOT NULL DEFAULT 'right'"),
+    ],
+    "reconcile_batches": [
+        ("reference_configured", "INTEGER NOT NULL DEFAULT 0"),
+        ("reference_fixture", "TEXT"),
+        ("reference_policy", "TEXT"),
+        ("reference_target_side", "TEXT"),
+        ("reference_hit", "INTEGER NOT NULL DEFAULT 0"),
+        ("reference_awaiting", "INTEGER NOT NULL DEFAULT 0"),
+        ("reference_divergent", "INTEGER NOT NULL DEFAULT 0"),
+    ],
+    "reconcile_diffs": [
+        ("reference_status", "TEXT NOT NULL DEFAULT 'not_applicable'"),
+        ("reference_json", "TEXT"),
+        ("decision_json", "TEXT"),
+    ],
+}
+
+
+def _migrate(conn) -> None:
+    for table, columns in COLUMN_MIGRATIONS.items():
+        existing = {
+            r["name"] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()
+        }
+        for name, ddl in columns:
+            if name not in existing:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}")
 
 
 def init_db() -> None:
@@ -130,45 +189,55 @@ def init_db() -> None:
             );
             """
         )
-        if conn.execute("SELECT COUNT(*) c FROM reconcile_pairs").fetchone()["c"] == 0:
-            from datetime import datetime, timezone
+        _migrate(conn)
+        from datetime import datetime, timezone
 
-            now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-            for p in PAIR_SEEDS:
-                conn.execute(
-                    """
-                    INSERT INTO reconcile_pairs(
-                        code, title, domain, left_name, right_name,
-                        left_fixture, right_fixture, align_keys_json, compare_fields_json,
-                        enabled, created_at
-                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?)
-                    """,
-                    (
-                        p["code"],
-                        p["title"],
-                        p["domain"],
-                        p["left_name"],
-                        p["right_name"],
-                        p["left_fixture"],
-                        p["right_fixture"],
-                        json.dumps(p["align_keys"], ensure_ascii=False),
-                        json.dumps(p["compare_fields"], ensure_ascii=False),
-                        p["enabled"],
-                        now,
-                    ),
-                )
-        if conn.execute("SELECT COUNT(*) c FROM endpoint_contracts").fetchone()["c"] == 0:
-            from datetime import datetime, timezone
-
-            now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-            for pair_code, side, fields in CONTRACT_SEEDS:
-                conn.execute(
-                    """
-                    INSERT INTO endpoint_contracts(pair_code, side, fields_json, version, updated_at)
-                    VALUES (?,?,?,?,?)
-                    """,
-                    (pair_code, side, json.dumps(fields, ensure_ascii=False), "v1", now),
-                )
+        now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+        for p in PAIR_SEEDS:
+            if conn.execute(
+                "SELECT COUNT(*) c FROM reconcile_pairs WHERE code=?", (p["code"],)
+            ).fetchone()["c"]:
+                continue
+            conn.execute(
+                """
+                INSERT INTO reconcile_pairs(
+                    code, title, domain, left_name, right_name,
+                    left_fixture, right_fixture, align_keys_json, compare_fields_json,
+                    reference_fixture, reference_name, reference_policy,
+                    reference_target_side, enabled, created_at
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                """,
+                (
+                    p["code"],
+                    p["title"],
+                    p["domain"],
+                    p["left_name"],
+                    p["right_name"],
+                    p["left_fixture"],
+                    p["right_fixture"],
+                    json.dumps(p["align_keys"], ensure_ascii=False),
+                    json.dumps(p["compare_fields"], ensure_ascii=False),
+                    p.get("reference_fixture"),
+                    p.get("reference_name"),
+                    p.get("reference_policy", "annotate_only"),
+                    p.get("reference_target_side", "right"),
+                    p["enabled"],
+                    now,
+                ),
+            )
+        for pair_code, side, fields in CONTRACT_SEEDS:
+            if conn.execute(
+                "SELECT COUNT(*) c FROM endpoint_contracts WHERE pair_code=? AND side=?",
+                (pair_code, side),
+            ).fetchone()["c"]:
+                continue
+            conn.execute(
+                """
+                INSERT INTO endpoint_contracts(pair_code, side, fields_json, version, updated_at)
+                VALUES (?,?,?,?,?)
+                """,
+                (pair_code, side, json.dumps(fields, ensure_ascii=False), "v1", now),
+            )
         if conn.execute("SELECT COUNT(*) c FROM settings").fetchone()["c"] == 0:
             conn.execute(
                 "INSERT INTO settings(key, value) VALUES (?, ?)",

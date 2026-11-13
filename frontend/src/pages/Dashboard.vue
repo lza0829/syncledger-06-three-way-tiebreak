@@ -21,7 +21,8 @@ onMounted(async () => {
         <div class="stat"><div class="stat-num">{{ stats.open_dispositions }}</div><div class="stat-label">未关处置单</div></div>
       </div>
       <p style="margin-top:1rem">默认策略 <span class="tag">{{ stats.policy }}</span>（只记差异，不盖写两端）</p>
-      <p><router-link to="/run">去对账台跑一趟 →</router-link></p>
+      <p class="muted">第三参照裁决按对账对单独配置：左右一致不读参照；参照缺键与参照分歧都不会被静默冒充成裁决结果。</p>
+      <p><router-link to="/run">去对账台跑一趟 →</router-link> · <router-link to="/reference">去看参照裁决 →</router-link></p>
     </div>
   </div>
 </template>

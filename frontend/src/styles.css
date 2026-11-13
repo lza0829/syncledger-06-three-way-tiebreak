@@ -91,6 +91,7 @@ button {
 }
 button:disabled { opacity: 0.55; cursor: not-allowed; }
 button.secondary { background: #3d5368; }
+button.secondary.active-filter { background: var(--accent); box-shadow: 0 0 0 2px #fff inset; }
 input, select, textarea {
   border: 1px solid var(--line);
   border-radius: 4px;

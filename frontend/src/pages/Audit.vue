@@ -52,7 +52,23 @@ watch(batchId, async () => {
         <div class="stat"><div class="stat-num">{{ summary.kinds.right_only }}</div><div class="stat-label">仅右有</div></div>
         <div class="stat"><div class="stat-num">{{ summary.kinds.field_mismatch }}</div><div class="stat-label">字段不一致</div></div>
       </div>
+      <div class="stat-grid" style="margin-top:0.5rem">
+        <div class="stat">
+          <div class="stat-num">{{ summary.reference_counts.hit }}</div>
+          <div class="stat-label">参照命中</div>
+        </div>
+        <div class="stat"><div class="stat-num">{{ summary.reference_counts.awaiting }}</div><div class="stat-label">待参照</div></div>
+        <div class="stat"><div class="stat-num">{{ summary.reference_counts.divergent }}</div><div class="stat-label">参照分歧</div></div>
+      </div>
       <p style="margin-top:0.85rem" class="muted">{{ summary.note }}</p>
+      <p>
+        本批参照配置
+        <span v-if="summary.batch.reference_configured" class="tag ok">
+          {{ summary.batch.reference_fixture }} · {{ summary.batch.reference_policy === 'reference_wins' ? '以参照为准盖向' : '仅标注' }}
+          {{ summary.batch.reference_policy === 'reference_wins' ? (summary.batch.reference_target_side === 'right' ? '右端' : '左端') : '' }}
+        </span>
+        <span v-else class="tag warn">未挂参照</span>
+      </p>
       <p>可导出 <span class="tag" :class="summary.export_ready ? 'ok' : 'warn'">{{ summary.export_ready ? '是' : '否' }}</span></p>
     </div>
   </div>

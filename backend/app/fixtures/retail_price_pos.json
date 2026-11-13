@@ -1,0 +1,9 @@
+[
+  {"sku_code": "P-100", "price": 39.90, "currency": "CNY", "updated_at": "2026-11-12T06:10:00Z"},
+  {"sku_code": "P-200", "price": 11.50, "currency": "CNY", "updated_at": "2026-11-12T06:10:00Z"},
+  {"sku_code": "P-300", "price": 90.00, "currency": "CNY", "updated_at": "2026-11-12T06:10:00Z"},
+  {"sku_code": "P-400", "price": 24.00, "currency": "CNY", "updated_at": "2026-11-12T06:10:00Z"},
+  {"sku_code": "P-500", "price": 65.00, "currency": "USD", "updated_at": "2026-11-12T06:10:00Z"},
+  {"sku_code": "P-600", "price": 16.00, "currency": "USD", "updated_at": "2026-11-12T06:10:00Z"},
+  {"sku_code": "P-700", "price": 7.00, "currency": "CNY", "updated_at": "2026-11-12T06:10:00Z"}
+]

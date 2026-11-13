@@ -69,10 +69,22 @@ onMounted(async () => {
         <div class="stat"><div class="stat-num">{{ last.field_mismatch }}</div><div class="stat-label">字段不一致</div></div>
         <div class="stat"><div class="stat-num">{{ last.diff_total }}</div><div class="stat-label">差异合计</div></div>
       </div>
+      <div v-if="last.reference_configured" class="stat-grid" style="margin-top:0.5rem">
+        <div class="stat">
+          <div class="stat-num">{{ last.reference_hit }}</div>
+          <div class="stat-label">参照命中 · {{ last.reference_policy === 'reference_wins' ? '盖写' : '标注' }}</div>
+        </div>
+        <div class="stat"><div class="stat-num">{{ last.reference_awaiting }}</div><div class="stat-label">待参照</div></div>
+        <div class="stat"><div class="stat-num">{{ last.reference_divergent }}</div><div class="stat-label">参照分歧</div></div>
+      </div>
       <p style="margin-top:0.75rem">
         <router-link :to="{ path: '/diffs', query: { batch_id: last.id } }">查看本批差异 →</router-link>
         ·
         <router-link :to="{ path: '/audit', query: { batch_id: last.id } }">审计摘要 →</router-link>
+        <template v-if="last.reference_configured">
+          ·
+          <router-link :to="{ path: '/reference' }">参照裁决互证 →</router-link>
+        </template>
       </p>
     </div>
 
@@ -82,7 +94,8 @@ onMounted(async () => {
         <thead>
           <tr>
             <th>批次</th><th>对账对</th><th>状态</th>
-            <th>左/右行</th><th>一致</th><th>仅左</th><th>仅右</th><th>字段差</th><th>时间</th>
+            <th>左/右行</th><th>一致</th><th>仅左</th><th>仅右</th><th>字段差</th>
+            <th>参照命中/待/分歧</th><th>时间</th>
           </tr>
         </thead>
         <tbody>
@@ -95,9 +108,13 @@ onMounted(async () => {
             <td>{{ b.left_only }}</td>
             <td>{{ b.right_only }}</td>
             <td>{{ b.field_mismatch }}</td>
+            <td class="mono">
+              <template v-if="b.reference_configured">{{ b.reference_hit }} / {{ b.reference_awaiting }} / {{ b.reference_divergent }}</template>
+              <span v-else class="muted">—</span>
+            </td>
             <td class="mono">{{ b.created_at }}</td>
           </tr>
-          <tr v-if="!batches.length"><td colspan="9" class="muted">还没有批次，先跑一趟。</td></tr>
+          <tr v-if="!batches.length"><td colspan="10" class="muted">还没有批次，先跑一趟。</td></tr>
         </tbody>
       </table>
     </div>

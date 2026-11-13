@@ -17,7 +17,8 @@ onMounted(async () => {
         <thead>
           <tr>
             <th>ID</th><th>编码</th><th>标题</th><th>业务域</th>
-            <th>左端</th><th>右端</th><th>对齐键</th><th>比对字段</th><th>启用</th>
+            <th>左端</th><th>右端</th><th>参照</th>
+            <th>对齐键</th><th>比对字段</th><th>启用</th>
           </tr>
         </thead>
         <tbody>
@@ -28,6 +29,17 @@ onMounted(async () => {
             <td>{{ p.domain }}</td>
             <td>{{ p.left_name }}<div class="mono muted">{{ p.left_fixture }}</div></td>
             <td>{{ p.right_name }}<div class="mono muted">{{ p.right_fixture }}</div></td>
+            <td>
+              <template v-if="p.reference_fixture">
+                {{ p.reference_name || '第三参照' }}
+                <div class="mono muted">{{ p.reference_fixture }}</div>
+                <div class="mono muted">
+                  {{ p.reference_policy === 'reference_wins' ? '以参照为准盖向' : '仅标注' }}
+                  {{ p.reference_policy === 'reference_wins' ? (p.reference_target_side === 'right' ? '右端' : '左端') : '' }}
+                </div>
+              </template>
+              <span v-else class="muted">未挂参照</span>
+            </td>
             <td class="mono">{{ p.align_keys.join(' + ') }}</td>
             <td class="mono">{{ p.compare_fields.join(', ') }}</td>
             <td><span class="tag" :class="p.enabled ? 'ok' : 'danger'">{{ p.enabled ? '是' : '否' }}</span></td>

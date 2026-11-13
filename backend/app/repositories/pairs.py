@@ -5,6 +5,13 @@ from typing import Any
 
 import sqlite3
 
+REFERENCE_FIELDS = (
+    "reference_fixture",
+    "reference_name",
+    "reference_policy",
+    "reference_target_side",
+)
+
 
 def _row(r: sqlite3.Row | None) -> dict[str, Any] | None:
     if r is None:
@@ -27,3 +34,23 @@ def get_pair(conn: sqlite3.Connection, pair_id: int) -> dict[str, Any] | None:
 
 def get_pair_by_code(conn: sqlite3.Connection, code: str) -> dict[str, Any] | None:
     return _row(conn.execute("SELECT * FROM reconcile_pairs WHERE code=?", (code,)).fetchone())
+
+
+def update_reference(
+    conn: sqlite3.Connection,
+    pair_id: int,
+    *,
+    reference_fixture: str | None,
+    reference_name: str | None,
+    reference_policy: str,
+    reference_target_side: str,
+) -> dict[str, Any] | None:
+    conn.execute(
+        """
+        UPDATE reconcile_pairs
+        SET reference_fixture=?, reference_name=?, reference_policy=?, reference_target_side=?
+        WHERE id=?
+        """,
+        (reference_fixture, reference_name, reference_policy, reference_target_side, pair_id),
+    )
+    return get_pair(conn, pair_id)
